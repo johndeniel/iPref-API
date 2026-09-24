@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+
+# build
+dist/
+build/
+*.tsbuildinfo
+
+# coverage
+coverage/
+.nyc_output/
+
+# env
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+
+# husky (keep hooks, ignore internals)
+.husky/_/
+
+# tmp
+tmp/
