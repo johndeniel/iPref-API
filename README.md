@@ -19,7 +19,7 @@ npm install
 ## Run
 
 ```bash
-npm run start:dev
+npm run dev
 ```
 
 - Health: `GET http://localhost:3000/health` → `{ "status": "ok" }`
