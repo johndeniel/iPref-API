@@ -17,6 +17,7 @@ coverage/
 
 # logs
 *.log
+logs/
 npm-debug.log*
 
 # OS / editors
