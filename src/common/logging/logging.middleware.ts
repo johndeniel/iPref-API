@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { firstHeader } from '../http/headers.js';
 import type { LogContext } from './logger.factory.js';
 import { LoggingService } from './logger.factory.js';
 
@@ -10,11 +11,10 @@ export interface LoggedRequest extends Request {
   boundedContext?: string;
 }
 
-// Mirrors Profile-API CentralizedLoggingFilter URI -> bounded context map.
-// Only /health exists today; entries are matched by prefix and trivial to extend.
 const URI_CONTEXT_MAP: Record<string, string> = {
   '/health': 'HEALTH',
   '/api-docs': 'DOCS',
+  '/v1/personal-information': 'PERSONAL',
 };
 
 const resolveBoundedContext = (uri: string): string | undefined => {
@@ -51,9 +51,6 @@ const statusDescription = (statusCode: number): string => {
   }
 };
 
-const firstHeader = (value: string | string[] | undefined): string | undefined =>
-  Array.isArray(value) ? value[0] : value;
-
 const getClientIp = (req: Request): string => {
   const forwarded = firstHeader(req.headers['x-forwarded-for']);
   if (forwarded && forwarded.length > 0) return forwarded.split(',')[0]?.trim() ?? 'unknown';
@@ -88,7 +85,7 @@ export class LoggingMiddleware implements NestMiddleware {
           const duration = Date.now() - startTime;
           const statusCode = res.statusCode;
           log.info(
-            `${req.method} ${requestUri} ${String(statusCode)} - ${statusDescription(statusCode)} [${String(duration)}ms]`,
+            `${req.method} ${requestUri} ${statusCode} - ${statusDescription(statusCode)} [${duration}ms]`,
             {
               requestId: context.requestId,
               clientIp: context.clientIp,

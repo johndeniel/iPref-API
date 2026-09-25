@@ -18,9 +18,6 @@ const toTag = (value: unknown): string =>
 const toContext = (value: unknown): string =>
   typeof value === 'string' && value.length > 0 ? value : 'App';
 
-// Mirrors Profile-API logback pattern:
-// %d [%thread] [%X{requestId}] [%X{clientIp}] [%X{boundedContext}] LEVEL logger - msg
-// (Node is single-threaded, so pid takes the thread slot.)
 const lineFormat = winston.format.printf(info => {
   const line = info as unknown as LogLine;
   const timestamp = typeof line.timestamp === 'string' ? line.timestamp : '-';

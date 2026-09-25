@@ -11,8 +11,6 @@ export interface LogContext {
   requestUri?: string;
 }
 
-// Node equivalent of Profile-API CentralizedLoggingFilter MDC helpers +
-// cached LoggerFactory.getLogger(Class) (CACHE map).
 @Injectable()
 export class LoggingService {
   private static readonly storage = new AsyncLocalStorage<LogContext>();
