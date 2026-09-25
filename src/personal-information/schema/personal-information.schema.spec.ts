@@ -51,6 +51,17 @@ describe('personal-information schema (single source of truth)', () => {
     ).toBe(false);
   });
 
+  it('rejects client-supplied userId (server-set from the verified JWT)', () => {
+    expect(
+      createPersonalInformationSchema.safeParse({ fullName: 'Ada Lovelace', userId: 'user-1' })
+        .success,
+    ).toBe(false);
+    expect(
+      updatePersonalInformationSchema.safeParse({ fullName: 'Ada Lovelace', userId: 'user-1' })
+        .success,
+    ).toBe(false);
+  });
+
   it('defaults pagination/sort and coerces query-string numbers', () => {
     const parsed = listPersonalInformationQuerySchema.safeParse({});
     expect(parsed.success).toBe(true);

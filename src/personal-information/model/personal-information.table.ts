@@ -4,6 +4,8 @@ export const personalInformation = pgTable(
   'personal_information',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    // Managed Neon Auth user id (JWT `sub`). One profile per user.
+    userId: text('user_id').notNull().unique(),
     fullName: varchar('full_name', { length: 255 }).notNull(),
     blobUrl: text('blob_url'),
     blobId: uuid('blob_id'),
@@ -15,6 +17,7 @@ export const personalInformation = pgTable(
       .$onUpdate(() => new Date()),
   },
   table => [
+    index('idx_pi_user_id').on(table.userId),
     index('idx_pi_full_name').on(table.fullName),
     index('idx_pi_phone_number').on(table.phoneNumber),
     index('idx_pi_blob_id').on(table.blobId),

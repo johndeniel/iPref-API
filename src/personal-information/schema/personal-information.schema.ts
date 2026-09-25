@@ -10,9 +10,11 @@ const baseInsertSchema = createInsertSchema(personalInformation, {
 });
 
 // Strict bodies (unknown fields → 400); query filters stay lenient.
+// userId is server-set from the verified JWT — never client-supplied.
 export const createPersonalInformationSchema = baseInsertSchema
   .omit({
     id: true,
+    userId: true,
     createdAt: true,
     updatedAt: true,
   })

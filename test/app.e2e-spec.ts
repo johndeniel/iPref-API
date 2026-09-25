@@ -2,11 +2,10 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import type { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 
 describe('Health (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

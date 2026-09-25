@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
+import { AuthModule } from './auth/auth.module.js';
 import { loggerConfig } from './common/logging/logger.config.js';
 import { LoggingMiddleware } from './common/logging/logging.middleware.js';
 import { LoggingModule } from './common/logging/logging.module.js';
@@ -17,6 +18,7 @@ import { PersonalInformationModule } from './personal-information/personal-infor
     WinstonModule.forRoot(loggerConfig),
     LoggingModule,
     DatabaseModule,
+    AuthModule,
     IdempotencyModule,
     PersonalInformationModule,
   ],

@@ -41,6 +41,7 @@
     "drizzle-orm": "^0.45.3",
     "drizzle-zod": "^0.8.3",
     "joi": "^18.2.9",
+    "jose": "^6.2.12",
     "nest-winston": "^2.0.0",
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",

@@ -1,24 +1,28 @@
-# Better Auth — End-to-End Tutorial (NestJS + Neon + React Native)
+# Better Auth — End-to-End Tutorial (Managed Neon Auth + NestJS + React Native)
 
-Self-hosted auth for this API: **Google + email/password**, sessions in the
-existing Neon Postgres, consumed by a React Native app shipping real **APK +
-IPA**. No third-party auth vendor.
+Managed auth for this API via **Neon Auth (hosted Better Auth)**:
+**Google + email/password**, identity in the same Neon Postgres
+(`neon_auth` schema), consumed by a React Native app shipping real **APK +
+IPA**. The NestJS API is a JWT resource server — no auth tables, no Google
+secrets, no auth server code in this repo.
 
 ```text
-RN app (APK/IPA) ──Bearer──▶ NestJS /api/auth/* ──Drizzle──▶ Neon Postgres
-                    ──Bearer──▶ v1/personal-information (guarded)
+RN app (APK/IPA) ──sign-in/up──▶ Neon Auth URL ──writes──▶ Neon Postgres (neon_auth.*)
+                 ──Bearer JWT──▶ NestJS API ──Drizzle──▶ Neon Postgres (app tables)
 ```
 
 How it fits together:
 
-- `better-auth` owns identity (`user`, `session`, `account`,
-  `verification` tables). Google's `name` maps 1:1 onto `fullName` — no
-  first/last splitting.
-- A `databaseHooks.user.create.after` hook auto-creates the
-  `personal_information` row on signup.
-- Mobile authenticates with bearer tokens (`bearer()` plugin); Google login
-  goes through the **native Google SDK → ID token** flow (same code path on
-  Android and iOS, no in-app browser redirect).
+- Neon Auth owns identity (`neon_auth.user`, `.session`, …) in the **same
+  database** this API connects to. Google's `name` maps 1:1 onto `fullName` —
+  no first/last splitting.
+- A `user.created` **webhook** auto-creates the `personal_information` row on
+  signup (replaces self-hosted `databaseHooks`); every endpoint also lazily
+  ensures the row as a self-healing fallback.
+- Mobile authenticates against the Neon Auth URL, then calls this API with
+  the JWT (`Authorization: Bearer`); Google login goes through the
+  **native Google SDK → ID token** flow (same code path on Android and iOS,
+  no in-app browser redirect).
 
 ## 0. Prerequisites
 
@@ -28,147 +32,113 @@ How it fits together:
   or emulators — the native Google SDK does not work in Expo Go.
 - The API reachable from the device (`https://<your-api>`, not `localhost`).
 
-## Part A — Backend (this repo)
+## Part A — Backend (this repo, implemented)
+
+The API verifies Neon Auth JWTs (EdDSA, 15-min expiry) against the instance
+JWKS. One dependency, no auth server code:
 
 ### A1. Install
 
 ```bash
-npm install better-auth @better-auth/drizzle-adapter @thallesp/nestjs-better-auth
+npm install jose
 ```
 
-`@thallesp/nestjs-better-auth` is the community NestJS bridge: it mounts
-`/api/auth/*` and registers a global guard with a `@Session()` decorator.
-Pin the version — community-maintained.
+`jose` verifies Bearer JWTs (`src/auth/`) and the webhook's detached-JWS
+signatures. No `better-auth` server packages, no `@thallesp/nestjs-better-auth`.
 
 ### A2. Environment
 
-Extend `src/config/env.validation.ts` (Joi) with:
+`src/config/env.validation.ts` (Joi) requires:
 
 ```text
-BETTER_AUTH_SECRET=<openssl rand -base64 32>   # min 32 chars
-BETTER_AUTH_URL=https://<your-api>             # Google builds its callback from this
-GOOGLE_CLIENT_ID=...                            # Web client (OAuth code flow)
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_IOS_CLIENT_ID=...                        # Native ID-token flow
-GOOGLE_ANDROID_CLIENT_ID=...
-TRUSTED_ORIGINS=myapp://                        # App deep-link scheme
+NEON_AUTH_BASE_URL=https://<endpoint>.neonauth.<region>.aws.neon.tech/neondb/auth
+NEON_AUTH_JWKS_URL=<base>/.well-known/jwks.json   # optional, derived from BASE_URL
+NEON_AUTH_ISSUER=<origin of base>                 # optional, derived from BASE_URL
 ```
 
-### A3. Auth instance — `src/auth/auth.ts`
+No secrets — verification uses public keys, so rotation needs no redeploy.
 
-```ts
-import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from '@better-auth/drizzle-adapter';
-import { expo } from '@better-auth/expo';
-import { bearer } from 'better-auth/plugins';
-import type { DrizzleDb } from '../database/drizzle.types.js';
-import { db } from './db.js'; // drizzle instance over the existing PG_POOL
-import * as authSchema from './model/auth-schema.js';
+### A3. Auth module — `src/auth/`
 
-export const createAuth = (database: DrizzleDb) =>
-  betterAuth({
-    baseURL: process.env.BETTER_AUTH_URL,
-    trustedOrigins: (process.env.TRUSTED_ORIGINS ?? '').split(',').filter(Boolean),
-    database: drizzleAdapter(database, { provider: 'pg', schema: authSchema }),
-    emailAndPassword: { enabled: true },
-    socialProviders: {
-      google: {
-        // First entry serves the web code flow; all entries verify native ID tokens.
-        clientId: [
-          process.env.GOOGLE_CLIENT_ID as string,
-          process.env.GOOGLE_IOS_CLIENT_ID as string,
-          process.env.GOOGLE_ANDROID_CLIENT_ID as string,
-        ],
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-        accessType: 'offline',
-        prompt: 'select_account consent',
-      },
-    },
-    plugins: [expo(), bearer()],
-    databaseHooks: {
-      user: {
-        create: {
-          after: async user => {
-            await database.insert(personalInformation).values({
-              userId: user.id,
-              fullName: user.name,
-              blobUrl: user.image ?? null,
-            });
-          },
-        },
-      },
-    },
-  });
+- `auth.service.ts` — `verifyBearer()` via `jose.createRemoteJWKSet`
+  (cached, honors rotation) + issuer check; returns `{ id: sub, email }`.
+- `auth.guard.ts` — `JwtAuthGuard` (scoped per-controller, **not** global):
+  requires `Authorization: Bearer`, attaches identity to `req.authUser`,
+  401s otherwise. `v1/personal-information` uses it; `/health`,
+  `/health/db`, `/api-docs` stay open with no extra decorators.
+- `current-user.decorator.ts` — `@CurrentUser()` reads the attached identity.
 
-export type Auth = ReturnType<typeof createAuth>;
-```
+### A4. Profile link — `personal_information.user_id`
 
-Reuse the existing `PG_POOL`/`DRIZZLE` providers from `DatabaseModule` —
-do not open a second pool.
-
-### A4. Auth tables + profile link
-
-Generate the Better Auth Drizzle schema into `src/auth/model/*.table.ts`
-(covered by the `drizzle.config.ts` `./src/**/model/*.table.ts` glob):
+`text('user_id')`, `NOT NULL`, `UNIQUE` (one profile per Neon Auth user id =
+JWT `sub`) + `idx_pi_user_id`. Migrated with the usual flow:
 
 ```bash
-npx @better-auth/cli@latest generate
-```
-
-This creates `user`, `session`, `account`, `verification`. (`user` is a
-Postgres reserved word — Better Auth quotes it; non-issue.) Then add the
-link column on `personal_information` (Better Auth pg ids are text):
-
-```ts
-userId: text('user_id'), // + index('idx_pi_user_id')
-```
-
-Then the usual flow:
-
-```bash
-npm run db:generate
+npm run db:generate   # must report no unexpected diffs
 npm run db:migrate
 ```
 
-`db:generate` must report no unexpected diffs; `drizzle-kit check` must pass.
+`userId` is server-set from the JWT and omitted from the zod schemas, so
+clients cannot spoof it (strict bodies 400 it).
 
-### A5. NestJS wiring
+### A5. Provisioning — webhook (eager) + lazy (fallback)
 
-```ts
-// app.module.ts
-AuthModule.forRoot({ auth: createAuth(db) }),
+- `POST /webhooks/neon-auth` verifies the EdDSA detached-JWS signature
+  (`X-Neon-Signature*` headers, 5-min timestamp tolerance) and inserts the
+  profile from the `user.created` payload (`name ?? email`, `image →
+blobUrl`), idempotently (`ON CONFLICT DO NOTHING` doubles as redelivery
+  dedup). Other event types return 200 ignored. Responses stay 2xx/4xx —
+  Neon treats other 4xx as non-retryable.
+- `ProfileProvisioningService.ensureProvisioned()` runs on every
+  personal-information operation: if the row is missing it reads
+  `neon_auth.user` (same database — no extra HTTP call) and inserts.
+- `main.ts` uses `rawBody: true` so the webhook can verify exact bytes;
+  parsed `@Body()` behavior is unchanged everywhere else.
+
+Subscribe in the Neon Console (Auth → Configuration → Webhooks) or API/CLI:
+
+```bash
+neon neon-auth config webhook update --enabled \
+  --url https://<your-api>/webhooks/neon-auth \
+  --enabled-events user.created --timeout 5
 ```
 
-```ts
-// main.ts — required by the bridge so Better Auth sees the raw body
-NestFactory.create(AppModule, { bodyParser: false });
-```
+Localhost is rejected by Neon — use ngrok for local webhook testing; the
+lazy path covers local dev with zero console config.
 
-Two consequences to handle:
+Two consequences handled:
 
-1. **`bodyParser: false` can break `@Body()` parsing** on existing POST/PUT
-   routes. After wiring, curl every personal-information endpoint; if bodies
-   arrive empty, re-add `express.json()` for non-auth routes.
-2. **The guard is global.** Mark open routes explicitly:
-   `@AllowAnonymous()` on `/health` and `/health/db`; keep
-   `v1/personal-information` protected and read identity via
-   `@Session() session: UserSession`.
+1. **Idempotency keys are global, not per-user.** Only 2xx responses are
+   cached (401s release the key — verified in
+   `idempotency.middleware.ts`), so auth failures never poison replays.
+2. **POST create 409s when your row exists** (webhook/lazy normally beat
+   you to it); a 400 on the first attempt stays retryable with the same key.
 
-## Part B — Google Cloud Console (one project, three clients)
+## Part B — Neon Console (one project, three clients)
 
-1. APIs & Services → Credentials → Create Credentials → OAuth client ID.
-2. Create three clients in the **same** project:
+Google OAuth is configured on the managed service, not in this repo
+(no `GOOGLE_CLIENT_SECRET` here):
+
+1. Neon Console → Auth → Configuration → OAuth, or
+   `neon neon-auth config oauth ...`.
+2. Create three clients in the **same** Google Cloud project
+   (APIs & Services → Credentials → OAuth client ID):
    - **Web application** → authorized redirect URI:
-     `https://<your-api>/api/auth/callback/google`. Its ID + secret go to
-     `GOOGLE_CLIENT_ID/SECRET`.
+     `https://<your-neon-auth-host>/neondb/auth/callback/google`.
    - **Android** → package name + SHA-1 of the signing cert (debug keystore
-     for dev, release keystore for the APK you ship). ID →
-     `GOOGLE_ANDROID_CLIENT_ID`.
-   - **iOS** → Bundle ID. ID → `GOOGLE_IOS_CLIENT_ID`.
+     for dev, release keystore for the APK you ship).
+   - **iOS** → Bundle ID.
 3. `redirect_uri_mismatch` always means the callback URL Giants: it must match
-   `BETTER_AUTH_URL + /api/auth/callback/google` exactly.
+   the Neon Auth URL + `/callback/google` exactly.
+4. Add the app's deep-link scheme (`myapp://`) to trusted domains so
+   post-OAuth redirects land back in the app.
 
 ## Part C — Mobile (React Native, APK + IPA)
+
+The app talks to **two** backends: the Neon Auth URL for sign-in/up, this
+API for data. The backend contract is one line: `Authorization: Bearer
+<JWT>` (from `authClient.token()` or the `set-auth-jwt` response header;
+tokens live 15 minutes — refresh before calling the API).
 
 ### C1. Install (app repo)
 
@@ -187,16 +157,20 @@ import * as SecureStore from 'expo-secure-store';
 
 const TOKEN_KEY = 'ipref-bearer-token';
 
+// Point at the Neon Auth URL, not this API.
 export const authClient = createAuthClient({
-  baseURL: 'https://<your-api>',
+  baseURL: 'https://<your-neon-auth-host>/neondb/auth',
   plugins: [expoClient({ scheme: 'myapp', storage: SecureStore })],
   fetchOptions: {
     onSuccess: ctx => {
-      const token = ctx.response.headers.get('set-auth-token');
+      // JWT plugin: fresh token on session checks; persist for API calls.
+      const token = ctx.response.headers.get('set-auth-jwt');
       if (token) SecureStore.setItemAsync(TOKEN_KEY, token);
     },
   },
 });
+
+// Or explicitly: const { data } = await authClient.token();
 
 export const authFetch = async (path: string, init: RequestInit = {}) => {
   const token = await SecureStore.getItemAsync(TOKEN_KEY);
@@ -255,7 +229,7 @@ await authClient.signIn.social({ provider: 'google', callbackURL: '/dashboard' }
 ### C5. Build notes
 
 - `scheme: 'myapp'` must exist in `app.json` (`expo.scheme`) and in
-  `TRUSTED_ORIGINS`, or post-OAuth deep links land nowhere.
+  the Neon Auth trusted domains, or post-OAuth deep links land nowhere.
 - Android APK: signing cert SHA-1 registered in Part B must be the one that
   signs the APK you test (`gradlew assembleRelease` / EAS build).
 - iOS IPA: Bundle ID must match the iOS OAuth client; Google SDK needs the
@@ -265,19 +239,24 @@ await authClient.signIn.social({ provider: 'google', callbackURL: '/dashboard' }
 ## Part D — Verification checklist
 
 - [ ] `npm run test`, `lint`, `format:check`, `build` green.
-- [ ] `db:generate` clean; Neon has `user/session/account/verification` + `user_id`.
-- [ ] Email sign-up → `personal_information` row auto-created (`fullName` = name).
+- [ ] `db:generate` clean; `personal_information` has `user_id` (unique + index).
+- [ ] Email sign-up → `user.created` webhook fires → `personal_information`
+      row auto-created (`fullName` = name); lazy path covers missed webhooks.
 - [ ] Google login on Android APK **and** iOS build → same result.
-- [ ] Bearer CRUD: 200 with token, 401 without, idempotency replay + strict-body 400s unchanged.
-- [ ] Sign-out → bearer rejected; reinstall → session restores from SecureStore.
+- [ ] Bearer CRUD: 200 with token, 401 without; cross-user IDs 404;
+      idempotency replay + strict-body 400s unchanged.
+- [ ] Sign-out → bearer rejected (token expiry); reinstall → session restores
+      from SecureStore, fresh JWT via `authClient.token()`.
 
 ## Troubleshooting
 
 | Symptom                                            | Likely cause                                                              |
 | -------------------------------------------------- | ------------------------------------------------------------------------- |
-| `redirect_uri_mismatch`                            | Callback ≠ `BETTER_AUTH_URL/api/auth/callback/google`                     |
-| POST/PUT bodies empty after wiring                 | `bodyParser: false` side effect — re-add `express.json()` off-auth-paths  |
-| 401 on `/health`                                   | Missing `@AllowAnonymous()` under the global guard                        |
+| `redirect_uri_mismatch`                            | Callback ≠ `<NEON_AUTH_URL>/callback/google`                              |
+| Webhook never fires locally                        | Neon rejects localhost — expose via ngrok/HTTPS hostname                  |
+| Webhook 401s                                       | Clock skew > tolerance, or body re-serialized before verify (needs raw)   |
+| 401 with a fresh token                             | Issuer ≠ auth URL origin, or JWKS URL misconfigured                       |
+| POST returns 409 after signup                      | By design — webhook/lazy already created your row; use PUT                |
 | Google login works Android, fails iOS (or reverse) | Wrong Bundle ID / SHA-1 on that platform's OAuth client                   |
 | Session lost on app restart                        | SecureStore write missing (bare RN: use keychain/keystore-backed storage) |
 | Concurrent same-key POSTs 409                      | By design — rival owns the key; retry with same key                       |

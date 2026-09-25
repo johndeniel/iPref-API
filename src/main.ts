@@ -5,7 +5,9 @@ import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // rawBody serves the Neon Auth webhook (signature binds exact bytes);
+  // parsed @Body() behavior is unchanged for all other routes.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
   app.enableShutdownHooks();
   app.useGlobalPipes(

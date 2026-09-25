@@ -10,8 +10,12 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/auth.guard.js';
+import type { AuthenticatedUser } from '../../auth/auth.types.js';
+import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import {
   createPersonalInformationSchema,
@@ -34,13 +38,18 @@ const queryPipe = new ZodValidationPipe<ListPersonalInformationQuery>(
 );
 
 @ApiTags('personal-information')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller('v1/personal-information')
 export class PersonalInformationController {
   constructor(private readonly service: PersonalInformationService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create personal information' })
+  @ApiOperation({
+    summary: 'Create personal information',
+    description: 'Profiles are auto-created on signup; this returns 409 when yours already exists.',
+  })
   @ApiHeader({
     name: 'Idempotency-Key',
     description:
@@ -54,31 +63,46 @@ export class PersonalInformationController {
   })
   @ApiResponse({
     status: 409,
-    description: 'Request with this Idempotency-Key is already processing',
+    description:
+      'Request with this Idempotency-Key is already processing, or personal information already exists for this user',
   })
-  create(@Body(createPipe) dto: CreatePersonalInformationInput) {
-    return this.service.create(dto);
+  @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(createPipe) dto: CreatePersonalInformationInput,
+  ) {
+    return this.service.create(user.id, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'List personal information (paginated)' })
-  list(@Query(queryPipe) query: ListPersonalInformationQuery) {
-    return this.service.list(query);
+  @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
+  list(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query(queryPipe) query: ListPersonalInformationQuery,
+  ) {
+    return this.service.list(user.id, query);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update personal information' })
+  @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
   update(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Body(updatePipe) dto: UpdatePersonalInformationInput,
   ) {
-    return this.service.update(id, dto);
+    return this.service.update(user.id, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete personal information' })
-  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    await this.service.remove(id);
+  @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
+  async remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<void> {
+    await this.service.remove(user.id, id);
   }
 }

@@ -8,6 +8,13 @@
       "when": 1790332520858,
       "tag": "0000_init_core_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790336571340,
+      "tag": "0001_talented_tenebrous",
+      "breakpoints": true
     }
   ]
 }
