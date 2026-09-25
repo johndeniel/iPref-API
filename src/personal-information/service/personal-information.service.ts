@@ -89,6 +89,17 @@ export class PersonalInformationService {
     }
   }
 
+  /**
+   * Post-login "who am I": returns the caller's profile, provisioning it on
+   * first touch. Never 404s under normal operation.
+   */
+  async getMine(userId: string): Promise<PersonalInformation> {
+    await this.provisioning.ensureProvisioned({ id: userId });
+    const mine = await this.findOwned(userId, undefined);
+    if (!mine) throw new Error(`Provisioning failed for user_id='${userId}'`);
+    return mine;
+  }
+
   async list(
     userId: string,
     query: ListPersonalInformationQuery,

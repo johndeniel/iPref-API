@@ -37,6 +37,16 @@ describe('verifyToken', () => {
     expect(user).toEqual({ id: 'user-1', email: undefined });
   });
 
+  it('passes the banned flag through, defaulting to undefined', async () => {
+    const { keySet, sign } = await setup();
+
+    const banned = await verifyToken(await sign({ banned: true }), keySet, ISSUER);
+    expect(banned).toEqual({ id: 'user-1', email: undefined, banned: true });
+
+    const clean = await verifyToken(await sign({}), keySet, ISSUER);
+    expect(clean.banned).toBeUndefined();
+  });
+
   it('rejects a foreign issuer', async () => {
     const { keySet, sign } = await setup();
     const token = await sign({});

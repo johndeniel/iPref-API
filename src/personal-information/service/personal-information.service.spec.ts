@@ -64,6 +64,18 @@ describe('PersonalInformationService', () => {
     );
   });
 
+  it('getMine provisions first, then returns the owned profile', async () => {
+    const ensureProvisioned = vi.fn().mockResolvedValue(undefined);
+    const prov = { ensureProvisioned } as unknown as ProfileProvisioningService;
+    const db = { select: selectRows([row()]) } as unknown as DrizzleDb;
+    const service = new PersonalInformationService(db, prov);
+
+    const mine = await service.getMine(USER_ID);
+
+    expect(ensureProvisioned).toHaveBeenCalledWith({ id: USER_ID });
+    expect(mine).toMatchObject({ id: '11111111-1111-4111-8111-111111111111', userId: USER_ID });
+  });
+
   it('lists with limit/offset derived from page/size and maps pagination', async () => {
     const offset = vi.fn().mockResolvedValue([row()]);
     const limit = vi.fn().mockReturnValue({ offset });

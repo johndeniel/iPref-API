@@ -1,4 +1,4 @@
-import { UnauthorizedException, type ExecutionContext } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException, type ExecutionContext } from '@nestjs/common';
 import { JwtAuthGuard, type AuthenticatedRequest } from './auth.guard.js';
 import type { AuthService } from './auth.service.js';
 import type { AuthenticatedUser } from './auth.types.js';
@@ -55,6 +55,14 @@ describe('JwtAuthGuard', () => {
     const req: Partial<AuthenticatedRequest> = { headers: { authorization: 'Bearer bad' } };
 
     await expect(guard.canActivate(contextFor(req))).rejects.toThrow(UnauthorizedException);
+    expect(req.authUser).toBeUndefined();
+  });
+
+  it('rejects banned users with 403 and attaches nothing', async () => {
+    const { guard } = guardWith(() => ({ id: 'user-1', banned: true }));
+    const req: Partial<AuthenticatedRequest> = { headers: { authorization: 'Bearer token' } };
+
+    await expect(guard.canActivate(contextFor(req))).rejects.toThrow(ForbiddenException);
     expect(req.authUser).toBeUndefined();
   });
 });

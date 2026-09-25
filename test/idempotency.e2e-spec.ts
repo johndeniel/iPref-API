@@ -22,6 +22,7 @@ const userToken = (): string => `e2e-${uuidv4()}`;
 
 interface PersonalInformationBody {
   id: string;
+  userId?: string;
   fullName?: string;
   phoneNumber?: string;
 }
@@ -168,6 +169,13 @@ describe('Idempotency + personal-information (e2e)', () => {
     // First touch lazily provisions the profile.
     const initial = await api().get('/v1/personal-information').set(authed(token)).expect(200);
     expect(listOf(initial).content).toHaveLength(1);
+
+    // /me returns the same provisioned row.
+    const me = await api().get('/v1/personal-information/me').set(authed(token)).expect(200);
+    expect(bodyOf(me)).toMatchObject({
+      id: (listOf(initial).content[0] as PersonalInformationBody).id,
+      userId: token,
+    });
 
     // Manual create 409s while the auto-provisioned row exists.
     const taken = key();

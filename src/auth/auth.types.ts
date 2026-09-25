@@ -4,6 +4,8 @@ export interface AuthenticatedUser {
   id: string;
   /** JWT `email` claim, when present. */
   email?: string;
+  /** JWT `banned` claim. Stale up to the token lifetime (15 min). */
+  banned?: boolean;
 }
 
 /** Resolved Neon Auth endpoints used for Bearer verification. */

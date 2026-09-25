@@ -27,6 +27,7 @@ export const verifyToken = async (
   return {
     id: payload.sub,
     email: typeof payload.email === 'string' ? payload.email : undefined,
+    banned: payload.banned === true ? true : undefined,
   };
 };
 

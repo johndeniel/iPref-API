@@ -64,9 +64,12 @@ No secrets — verification uses public keys, so rotation needs no redeploy.
   (cached, honors rotation) + issuer check; returns `{ id: sub, email }`.
 - `auth.guard.ts` — `JwtAuthGuard` (scoped per-controller, **not** global):
   requires `Authorization: Bearer`, attaches identity to `req.authUser`,
-  401s otherwise. `v1/personal-information` uses it; `/health`,
+  401s otherwise. Banned users (`banned` claim) are refused with 403 —
+  claims go stale up to the 15-min token lifetime. `v1/personal-information` uses it; `/health`,
   `/health/db`, `/api-docs` stay open with no extra decorators.
 - `current-user.decorator.ts` — `@CurrentUser()` reads the attached identity.
+- `GET /v1/personal-information/me` — post-login who-am-I: returns the
+  caller's profile, auto-provisioning on first call (never 404s).
 
 ### A4. Profile link — `personal_information.user_id`
 

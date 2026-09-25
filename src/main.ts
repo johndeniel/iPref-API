@@ -10,6 +10,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
   app.enableShutdownHooks();
+  // Scoped to the demo web client; tighten via env when a prod origin exists.
+  app.enableCors({ origin: 'http://localhost:8000' });
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );

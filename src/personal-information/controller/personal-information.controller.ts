@@ -67,6 +67,7 @@ export class PersonalInformationController {
       'Request with this Idempotency-Key is already processing, or personal information already exists for this user',
   })
   @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
+  @ApiResponse({ status: 403, description: 'User is banned' })
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body(createPipe) dto: CreatePersonalInformationInput,
@@ -74,9 +75,22 @@ export class PersonalInformationController {
     return this.service.create(user.id, dto);
   }
 
+  @Get('me')
+  @ApiOperation({
+    summary: 'Get own profile',
+    description: 'Post-login who-am-I. Auto-provisions the profile on first call.',
+  })
+  @ApiResponse({ status: 200, description: 'Own personal information' })
+  @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
+  @ApiResponse({ status: 403, description: 'User is banned' })
+  getMine(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.getMine(user.id);
+  }
+
   @Get()
   @ApiOperation({ summary: 'List personal information (paginated)' })
   @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
+  @ApiResponse({ status: 403, description: 'User is banned' })
   list(
     @CurrentUser() user: AuthenticatedUser,
     @Query(queryPipe) query: ListPersonalInformationQuery,
@@ -87,6 +101,7 @@ export class PersonalInformationController {
   @Put(':id')
   @ApiOperation({ summary: 'Update personal information' })
   @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
+  @ApiResponse({ status: 403, description: 'User is banned' })
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -99,6 +114,7 @@ export class PersonalInformationController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete personal information' })
   @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
+  @ApiResponse({ status: 403, description: 'User is banned' })
   async remove(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
