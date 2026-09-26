@@ -37,4 +37,4 @@ the `user_id` filter. Without those, the filter is all risk and zero benefit.
 
 - Contract (schemas, sort whitelist): `src/personal-information/model/personal-information.model.ts`
 - Enforcement (`buildWhere` ownership predicate): `src/personal-information/service/personal-information.service.ts`
-- Identity (JWT claims, `sub`): `docs/better-auth.md`
+- Identity (JWT claims, `sub`): `docs/0002_neon_auth.md`

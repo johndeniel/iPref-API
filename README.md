@@ -4,13 +4,11 @@ NestJS + TypeScript API.
 
 ## Prerequisites
 
-- Node >= 20 (`nvm use`)
 - npm
 
 ## Setup
 
 ```bash
-nvm use
 npm install
 ```
 
@@ -26,6 +24,14 @@ npm run dev
   ```
 - Swagger UI: `http://localhost:3000/api-docs`
 
+## Migrations (Drizzle)
+
+```bash
+npm run db:generate   # generate migration from schema changes
+npm run db:migrate    # apply migrations to the database
+npm run db:studio     # open Drizzle Studio (DB browser)
+```
+
 ## Scripts
 
 - `npm run build` — production build (`dist/`)
@@ -33,6 +39,8 @@ npm run dev
 - `npm run format` / `npm run format:check` — Prettier
 - `npm test` — unit tests (Vitest)
 - `npm run test:e2e` — e2e tests
+- `npm run start` / `npm run start:debug` / `npm run start:prod` — run server
+- `npm run db:generate` / `db:migrate` / `db:studio` — Drizzle migrations
 
 ## Tooling
 

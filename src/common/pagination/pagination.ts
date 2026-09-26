@@ -1,7 +1,7 @@
 import { asc, desc, ilike, sql, type SQL } from 'drizzle-orm';
 import type { AnyPgColumn, PgTable } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
-import type { DrizzleDb } from '../database/drizzle.types.js';
+import type { DrizzleDb } from '../../database/drizzle.types.js';
 
 export interface Paginated<T> {
   content: T[];

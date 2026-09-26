@@ -2,10 +2,10 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
 import { ConfigModule } from '@nestjs/config';
 import { WinstonModule } from 'nest-winston';
 import { AuthModule } from './auth/auth.module.js';
+import { envValidationSchema } from './common/config/env.validation.js';
 import { loggerConfig } from './common/logging/logger.config.js';
 import { LoggingMiddleware } from './common/logging/logging.middleware.js';
 import { LoggingModule } from './common/logging/logging.module.js';
-import { envValidationSchema } from './config/env.validation.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health/health.controller.js';
 import { IdempotencyMiddleware } from './idempotency/filter/idempotency.middleware.js';

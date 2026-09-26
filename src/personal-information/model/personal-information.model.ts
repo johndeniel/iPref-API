@@ -6,7 +6,7 @@ import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { index, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
-import { pageEnvelope } from '../../common/pagination.js';
+import { pageEnvelope } from '../../common/pagination/pagination.js';
 
 // Only user_id is indexed — it serves the ownership and provisioning lookups
 // (and is unique). No indexes on full_name/phone_number/blob_id: those are

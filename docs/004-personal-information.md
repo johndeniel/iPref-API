@@ -2,7 +2,7 @@
 
 One profile row per Neon Auth user. All routes live under
 `v1/personal-information`, all require a Bearer JWT, all are scoped to the
-caller. Identity itself is covered in `better-auth.md`; this doc covers the
+caller. Identity itself is covered in `0002_neon_auth.md`; this doc covers the
 domain module only.
 
 ## 1. Overview

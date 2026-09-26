@@ -5,7 +5,7 @@ import {
   escapeLike,
   listPaginated,
   type Paginated,
-} from '../../common/pagination.js';
+} from '../../common/pagination/pagination.js';
 import { DRIZZLE } from '../../database/database.constants.js';
 import type { DrizzleDb } from '../../database/drizzle.types.js';
 import {

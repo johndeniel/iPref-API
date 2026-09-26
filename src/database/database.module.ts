@@ -5,6 +5,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { setDefaultResultOrder } from 'node:dns';
 import { setDefaultAutoSelectFamilyAttemptTimeout } from 'node:net';
 import { Pool } from 'pg';
+import { normalizeSslMode } from './connection-string.js';
 import { DatabaseService } from './database.service.js';
 import { DbHealthController } from './db-health.controller.js';
 import { DRIZZLE, PG_POOL } from './database.constants.js';
@@ -21,7 +22,7 @@ import { DRIZZLE, PG_POOL } from './database.constants.js';
         setDefaultResultOrder('ipv4first');
         setDefaultAutoSelectFamilyAttemptTimeout(2000);
         const pool = new Pool({
-          connectionString: config.getOrThrow<string>('DATABASE_URL'),
+          connectionString: normalizeSslMode(config.getOrThrow<string>('DATABASE_URL')),
           ssl: { rejectUnauthorized: true },
           max: 5,
           idleTimeoutMillis: 30_000,
