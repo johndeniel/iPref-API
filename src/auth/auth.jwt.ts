@@ -31,5 +31,4 @@ export const verifyToken = async (
   };
 };
 
-/** Remote JWKS for a Neon Auth instance. jose caches keys and honors rotation. */
 export const createNeonKeySet = (jwksUrl: string): KeySet => createRemoteJWKSet(new URL(jwksUrl));

@@ -12,19 +12,28 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiHeader,
+  ApiOkResponse,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/auth.guard.js';
 import type { AuthenticatedUser } from '../../auth/auth.types.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
+import { ApiZodQuery, toOpenApiSchema } from '../../common/openapi/zod-openapi.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import {
   createPersonalInformationSchema,
   listPersonalInformationQuerySchema,
+  paginatedPersonalInformationSchema,
   updatePersonalInformationSchema,
   type CreatePersonalInformationInput,
   type ListPersonalInformationQuery,
   type UpdatePersonalInformationInput,
-} from '../schema/personal-information.schema.js';
+} from '../model/personal-information.model.js';
 import { PersonalInformationService } from '../service/personal-information.service.js';
 
 const createPipe = new ZodValidationPipe<CreatePersonalInformationInput>(
@@ -39,6 +48,8 @@ const queryPipe = new ZodValidationPipe<ListPersonalInformationQuery>(
 
 @ApiTags('personal-information')
 @ApiBearerAuth()
+@ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
+@ApiResponse({ status: 403, description: 'User is banned' })
 @UseGuards(JwtAuthGuard)
 @Controller('v1/personal-information')
 export class PersonalInformationController {
@@ -66,8 +77,6 @@ export class PersonalInformationController {
     description:
       'Request with this Idempotency-Key is already processing, or personal information already exists for this user',
   })
-  @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
-  @ApiResponse({ status: 403, description: 'User is banned' })
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body(createPipe) dto: CreatePersonalInformationInput,
@@ -81,16 +90,17 @@ export class PersonalInformationController {
     description: 'Post-login who-am-I. Auto-provisions the profile on first call.',
   })
   @ApiResponse({ status: 200, description: 'Own personal information' })
-  @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
-  @ApiResponse({ status: 403, description: 'User is banned' })
   getMine(@CurrentUser() user: AuthenticatedUser) {
     return this.service.getMine(user.id);
   }
 
   @Get()
   @ApiOperation({ summary: 'List personal information (paginated)' })
-  @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
-  @ApiResponse({ status: 403, description: 'User is banned' })
+  @ApiZodQuery(listPersonalInformationQuerySchema)
+  @ApiOkResponse({
+    schema: toOpenApiSchema(paginatedPersonalInformationSchema),
+    description: 'Matching personal information rows (own rows only; normally at most one)',
+  })
   list(
     @CurrentUser() user: AuthenticatedUser,
     @Query(queryPipe) query: ListPersonalInformationQuery,
@@ -100,8 +110,6 @@ export class PersonalInformationController {
 
   @Put(':id')
   @ApiOperation({ summary: 'Update personal information' })
-  @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
-  @ApiResponse({ status: 403, description: 'User is banned' })
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -113,8 +121,6 @@ export class PersonalInformationController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete personal information' })
-  @ApiResponse({ status: 401, description: 'Missing, invalid, or expired bearer token' })
-  @ApiResponse({ status: 403, description: 'User is banned' })
   async remove(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,

@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
+import type { Server } from 'node:http';
 import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 import { AppModule } from './../src/app.module.js';
@@ -17,8 +18,7 @@ describe('Auth boundaries (e2e)', () => {
   let app: INestApplication;
 
   const api = () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    return request(app.getHttpServer());
+    return request(app.getHttpServer() as Server);
   };
 
   beforeAll(async () => {

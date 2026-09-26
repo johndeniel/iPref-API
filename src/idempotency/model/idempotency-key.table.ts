@@ -14,8 +14,6 @@ export const IDEMPOTENCY_STATUS = {
   COMPLETED: 'COMPLETED',
 } as const;
 
-export type IdempotencyStatus = (typeof IDEMPOTENCY_STATUS)[keyof typeof IDEMPOTENCY_STATUS];
-
 export const idempotencyKeys = pgTable(
   'idempotency_keys',
   {

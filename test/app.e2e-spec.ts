@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
+import type { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 
@@ -17,8 +18,7 @@ describe('Health (e2e)', () => {
   });
 
   it('/health (GET)', () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    return request(app.getHttpServer())
+    return request(app.getHttpServer() as Server)
       .get('/health')
       .expect(200)
       .expect((res: { body: { status: unknown; timestamp: unknown } }) => {

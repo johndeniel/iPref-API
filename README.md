@@ -1,5 +1,3 @@
-Hello World
-
 # iPref API
 
 NestJS + TypeScript API.
@@ -47,9 +45,15 @@ npm run dev
 
 ```
 src/
-  main.ts            # bootstrap + Swagger at /api-docs
-  app.module.ts
-  health/
-    health.controller.ts  # GET /health
-test/
+  main.ts                     # bootstrap: rawBody, CORS, ValidationPipe, Swagger
+  app.module.ts               # middleware order: logging, then idempotency
+  auth/                       # Neon Auth JWT verification, guard, webhook signatures
+  common/                     # logging, Zod pipe, paginated DTO, http helpers
+  config/                     # Joi env schema
+  database/                   # pg pool, Drizzle, IPv4-first egress, /health/db
+  health/                     # GET /health
+  idempotency/                # Idempotency-Key middleware + key store
+  personal-information/       # profile CRUD, provisioning, Neon Auth webhook
+test/                         # e2e
+docs/                         # auth + module docs
 ```

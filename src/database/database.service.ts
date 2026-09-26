@@ -13,7 +13,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       await this.pool.query('SELECT 1');
       this.logger.log('Postgres connected');
     } catch (error) {
-      this.logger.warn(`Postgres check failed: ${(error as Error).message}`);
+      throw new Error(`Postgres unreachable (VPN blocking 5432?): ${(error as Error).message}`, {
+        cause: error,
+      });
     }
   }
 
@@ -29,8 +31,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   }
 
   async checkHealth(): Promise<{ ok: boolean; latencyMs: number }> {
-    const startedAt = Date.now();
-    await this.pool.query('SELECT 1');
-    return { ok: true, latencyMs: Date.now() - startedAt };
+    const started = Date.now();
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>(
+      (_, reject) => (timer = setTimeout(() => reject(new Error('Postgres timeout')), 2500)),
+    );
+    try {
+      await Promise.race([this.pool.query('SELECT 1'), timeout]);
+      return { ok: true, latencyMs: Date.now() - started };
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }

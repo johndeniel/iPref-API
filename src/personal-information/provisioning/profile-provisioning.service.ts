@@ -4,7 +4,7 @@ import { DatabaseService } from '../../database/database.service.js';
 import { DRIZZLE } from '../../database/database.constants.js';
 import type { DrizzleDb } from '../../database/drizzle.types.js';
 import type { AuthenticatedUser } from '../../auth/auth.types.js';
-import { personalInformation } from '../model/personal-information.table.js';
+import { personalInformation } from '../model/personal-information.model.js';
 
 export interface WebhookUser {
   id: string;
@@ -39,7 +39,6 @@ export class ProfileProvisioningService {
     private readonly database: DatabaseService,
   ) {}
 
-  /** Webhook path: insert from the `user.created` payload. */
   async provisionFromWebhook(user: WebhookUser): Promise<void> {
     const fullName = user.name?.trim() || user.email?.trim();
     if (!user.id || !fullName) {
@@ -52,7 +51,6 @@ export class ProfileProvisioningService {
     this.logger.log(`Provisioned profile for user_id=${user.id} (webhook)`);
   }
 
-  /** Lazy path: ensure the verified JWT identity owns a profile row. */
   async ensureProvisioned(identity: AuthenticatedUser): Promise<void> {
     const existing = await this.db
       .select({ id: personalInformation.id })

@@ -2,7 +2,6 @@
   "name": "ipref-api",
   "version": "0.0.1",
   "description": "iPref API - NestJS + TypeScript",
-  "author": "",
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -11,7 +10,6 @@
   },
   "scripts": {
     "build": "nest build",
-    "deploy": "nest deploy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -55,7 +53,6 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@nestjs/cli": "^12.0.0",
-    "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
     "@types/express": "^5.0.0",
@@ -70,11 +67,9 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.5.1",
     "prettier": "^3.4.2",
-    "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.70.1",
-    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.2"
   },
   "lint-staged": {

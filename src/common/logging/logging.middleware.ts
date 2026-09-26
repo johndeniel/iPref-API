@@ -1,3 +1,4 @@
+import { STATUS_CODES } from 'node:http';
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
@@ -24,32 +25,7 @@ const resolveBoundedContext = (uri: string): string | undefined => {
   return undefined;
 };
 
-const statusDescription = (statusCode: number): string => {
-  switch (statusCode) {
-    case 200:
-      return 'OK';
-    case 201:
-      return 'Created';
-    case 204:
-      return 'No Content';
-    case 400:
-      return 'Bad Request';
-    case 401:
-      return 'Unauthorized';
-    case 403:
-      return 'Forbidden';
-    case 404:
-      return 'Not Found';
-    case 409:
-      return 'Conflict';
-    case 422:
-      return 'Unprocessable Entity';
-    case 500:
-      return 'Internal Server Error';
-    default:
-      return 'Unknown';
-  }
-};
+const statusDescription = (statusCode: number): string => STATUS_CODES[statusCode] ?? 'Unknown';
 
 const getClientIp = (req: Request): string => {
   const forwarded = firstHeader(req.headers['x-forwarded-for']);

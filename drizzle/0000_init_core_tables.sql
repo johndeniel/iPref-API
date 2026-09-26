@@ -12,15 +12,15 @@ CREATE TABLE "idempotency_keys" (
 --> statement-breakpoint
 CREATE TABLE "personal_information" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" text NOT NULL,
 	"full_name" varchar(255) NOT NULL,
 	"blob_url" text,
 	"blob_id" uuid,
 	"phone_number" varchar(20),
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "personal_information_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
 CREATE INDEX "idx_idempotency_key_expires" ON "idempotency_keys" USING btree ("expires_at");--> statement-breakpoint
-CREATE INDEX "idx_pi_full_name" ON "personal_information" USING btree ("full_name");--> statement-breakpoint
-CREATE INDEX "idx_pi_phone_number" ON "personal_information" USING btree ("phone_number");--> statement-breakpoint
-CREATE INDEX "idx_pi_blob_id" ON "personal_information" USING btree ("blob_id");
+CREATE INDEX "idx_pi_user_id" ON "personal_information" USING btree ("user_id");

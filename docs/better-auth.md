@@ -131,7 +131,7 @@ Google OAuth is configured on the managed service, not in this repo
    - **Android** → package name + SHA-1 of the signing cert (debug keystore
      for dev, release keystore for the APK you ship).
    - **iOS** → Bundle ID.
-3. `redirect_uri_mismatch` always means the callback URL Giants: it must match
+3. `redirect_uri_mismatch` always means the callback URL is wrong: it must match
    the Neon Auth URL + `/callback/google` exactly.
 4. Add the app's deep-link scheme (`myapp://`) to trusted domains so
    post-OAuth redirects land back in the app.

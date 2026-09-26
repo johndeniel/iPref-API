@@ -20,6 +20,7 @@ async function bootstrap() {
     .setTitle('iPref API')
     .setDescription('iPref API documentation')
     .setVersion('1.0')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' })
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api-docs', app, document);

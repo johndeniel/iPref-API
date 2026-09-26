@@ -23,7 +23,6 @@ import { PersonalInformationModule } from './personal-information/personal-infor
     PersonalInformationModule,
   ],
   controllers: [HealthController],
-  providers: [],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

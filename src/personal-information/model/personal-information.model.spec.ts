@@ -2,9 +2,9 @@ import {
   createPersonalInformationSchema,
   listPersonalInformationQuerySchema,
   updatePersonalInformationSchema,
-} from './personal-information.schema.js';
+} from './personal-information.model.js';
 
-describe('personal-information schema (single source of truth)', () => {
+describe('personal-information model (single source of truth)', () => {
   it('requires full name, rejecting blanks', () => {
     expect(createPersonalInformationSchema.safeParse({}).success).toBe(false);
     expect(createPersonalInformationSchema.safeParse({ fullName: '   ' }).success).toBe(false);
@@ -33,6 +33,18 @@ describe('personal-information schema (single source of truth)', () => {
         fullName: 'Ada Lovelace',
       }).success,
     ).toBe(true);
+  });
+
+  it('accepts explicit nulls on nullable columns (matches the table)', () => {
+    expect(
+      createPersonalInformationSchema.safeParse({
+        fullName: 'Ada Lovelace',
+        blobUrl: null,
+        blobId: null,
+        phoneNumber: null,
+      }).success,
+    ).toBe(true);
+    expect(updatePersonalInformationSchema.safeParse({ blobUrl: null }).success).toBe(true);
   });
 
   it('allows partial updates including an empty patch', () => {

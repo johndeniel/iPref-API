@@ -1,4 +1,5 @@
 import { flattenedVerify } from 'jose';
+import { firstHeader } from '../../common/http/headers.js';
 import type { KeySet } from '../auth.jwt.js';
 
 export interface NeonWebhookHeaders {
@@ -12,17 +13,14 @@ export interface NeonWebhookHeaders {
 const TIMESTAMP_MAX_AGE_MS = 5 * 60 * 1000;
 const TIMESTAMP_MAX_SKEW_MS = 60 * 1000;
 
-/** Reads the `X-Neon-*` headers; throws on missing values. */
 export const parseNeonWebhookHeaders = (
   headers: Record<string, string | string[] | undefined>,
 ): NeonWebhookHeaders => {
-  const first = (value: string | string[] | undefined): string | undefined =>
-    Array.isArray(value) ? value[0] : value;
-  const signature = first(headers['x-neon-signature']);
-  const kid = first(headers['x-neon-signature-kid']);
-  const timestamp = first(headers['x-neon-timestamp']);
-  const eventType = first(headers['x-neon-event-type']);
-  const eventId = first(headers['x-neon-event-id']);
+  const signature = firstHeader(headers['x-neon-signature']);
+  const kid = firstHeader(headers['x-neon-signature-kid']);
+  const timestamp = firstHeader(headers['x-neon-timestamp']);
+  const eventType = firstHeader(headers['x-neon-event-type']);
+  const eventId = firstHeader(headers['x-neon-event-id']);
   if (!signature || !kid || !timestamp || !eventType || !eventId) {
     throw new Error('Missing required X-Neon-* webhook headers');
   }

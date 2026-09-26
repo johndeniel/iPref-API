@@ -57,11 +57,13 @@ curl "https://<your-api>/v1/personal-information?size=10&sortBy=createdAt" \
 # 200 { content: [...], totalElements, totalPages, page, size }
 ```
 
-Query params: `page` (default 0), `size` (default 10, max 100),
-`sortBy` (`fullName|phoneNumber|createdAt|updatedAt`, default `createdAt`),
-`sortDirection` (`asc|desc`, default `desc`), filters `id`, `blobId`,
-`search` (matches full name/phone, case-insensitive), `fullName`,
-`phoneNumber`. In practice returns ≤1 row — the caller's own.
+Query params (documented in this order in Swagger): `search`
+(case-insensitive text search across profile ID (UUID) and full name),
+`id` (exact profile ID filter), `fullName` (case-insensitive substring
+filter on the full name), `sortBy` (`fullName|createdAt|updatedAt`,
+default `createdAt`), `sortDirection` (`asc|desc`, default `desc`),
+`size` (default 10, max 100), `page` (default 0).
+In practice returns ≤1 row — the caller's own.
 
 ### `PUT /:id` — update own row
 

@@ -1,7 +1,6 @@
 import { BadRequestException, type PipeTransform } from '@nestjs/common';
 import type { ZodType } from 'zod';
 
-// Param-scoped Zod validator; the global pipe skips non-class metatypes.
 export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
   constructor(private readonly schema: ZodType<T>) {}
 

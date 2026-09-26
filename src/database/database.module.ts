@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Logger, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -9,12 +9,6 @@ import { DatabaseService } from './database.service.js';
 import { DbHealthController } from './db-health.controller.js';
 import { DRIZZLE, PG_POOL } from './database.constants.js';
 
-// This host's egress blackholes IPv6: the pooler resolves AAAA records that
-// never answer, and pg single-homes the first address `dns.lookup` returns,
-// so connects hang instead of falling back. Prefer IPv4 process-wide (v6
-// remains the fallback when no A record exists).
-setDefaultResultOrder('ipv4first');
-
 @Global()
 @Module({
   controllers: [DbHealthController],
@@ -23,15 +17,22 @@ setDefaultResultOrder('ipv4first');
       provide: PG_POOL,
       inject: [ConfigService],
       useFactory: (config: ConfigService): Pool => {
-        // High-latency egress drops pg connects under Node's 250ms
-        // Happy-Eyeballs attempt timeout — allow 2s per attempt.
+        // VPN/corporate DNS returns dead AAAA first; prefer IPv4.
+        setDefaultResultOrder('ipv4first');
         setDefaultAutoSelectFamilyAttemptTimeout(2000);
-        return new Pool({
+        const pool = new Pool({
           connectionString: config.getOrThrow<string>('DATABASE_URL'),
           ssl: { rejectUnauthorized: true },
-          // Fail loudly instead of hanging forever on a dead route.
-          connectionTimeoutMillis: 10_000,
+          max: 5,
+          idleTimeoutMillis: 30_000,
+          connectionTimeoutMillis: 5_000,
+          query_timeout: 5_000,
+          keepAlive: true,
+          keepAliveInitialDelayMillis: 10_000,
+          application_name: 'ipref-api',
         });
+        pool.on('error', err => new Logger('PgPool').error(err.message));
+        return pool;
       },
     },
     {

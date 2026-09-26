@@ -1,7 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import type { DrizzleDb } from '../../database/drizzle.types.js';
 import type { ProfileProvisioningService } from '../provisioning/profile-provisioning.service.js';
-import type { PersonalInformation } from '../schema/personal-information.schema.js';
+import type { PersonalInformation } from '../model/personal-information.model.js';
 import { PersonalInformationService } from './personal-information.service.js';
 
 const USER_ID = 'user-1';

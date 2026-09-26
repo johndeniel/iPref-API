@@ -26,20 +26,6 @@ export class LoggingService {
     return child;
   }
 
-  static getStore(): LogContext | undefined {
-    return LoggingService.storage.getStore();
-  }
-
-  static setContext(key: keyof LogContext, value: string): void {
-    const store = LoggingService.storage.getStore();
-    if (store) store[key] = value;
-  }
-
-  static removeContext(key: keyof LogContext): void {
-    const store = LoggingService.storage.getStore();
-    if (store) delete store[key];
-  }
-
   static clearContext(): void {
     const store = LoggingService.storage.getStore();
     if (store) {

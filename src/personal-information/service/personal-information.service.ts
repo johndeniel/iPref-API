@@ -1,27 +1,22 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
-import type { AnyPgColumn } from 'drizzle-orm/pg-core';
-import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto.js';
+import { and, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
+import {
+  containsFilter,
+  escapeLike,
+  listPaginated,
+  type Paginated,
+} from '../../common/pagination.js';
 import { DRIZZLE } from '../../database/database.constants.js';
 import type { DrizzleDb } from '../../database/drizzle.types.js';
-import { personalInformation } from '../model/personal-information.table.js';
+import {
+  personalInformation,
+  personalInformationSortColumns,
+  type CreatePersonalInformationInput,
+  type ListPersonalInformationQuery,
+  type PersonalInformation,
+  type UpdatePersonalInformationInput,
+} from '../model/personal-information.model.js';
 import { ProfileProvisioningService } from '../provisioning/profile-provisioning.service.js';
-import type {
-  CreatePersonalInformationInput,
-  ListPersonalInformationQuery,
-  PersonalInformation,
-  PersonalInformationSortField,
-  UpdatePersonalInformationInput,
-} from '../schema/personal-information.schema.js';
-
-const sortColumns: Record<PersonalInformationSortField, AnyPgColumn> = {
-  fullName: personalInformation.fullName,
-  phoneNumber: personalInformation.phoneNumber,
-  createdAt: personalInformation.createdAt,
-  updatedAt: personalInformation.updatedAt,
-};
-
-const escapeLike = (value: string): string => value.replace(/[\\%_]/g, match => `\\${match}`);
 
 const isUniqueViolation = (error: unknown): boolean =>
   typeof error === 'object' &&
@@ -29,30 +24,23 @@ const isUniqueViolation = (error: unknown): boolean =>
   'code' in error &&
   (error as { code?: unknown }).code === '23505';
 
-const buildWhere = (userId: string, q: ListPersonalInformationQuery): SQL | undefined => {
+const buildWhere = (userId: string, q: ListPersonalInformationQuery): SQL => {
   const predicates: SQL[] = [eq(personalInformation.userId, userId)];
   if (q.id) predicates.push(eq(personalInformation.id, q.id));
-  if (q.blobId) predicates.push(eq(personalInformation.blobId, q.blobId));
+  if (q.fullName) predicates.push(containsFilter(personalInformation.fullName, q.fullName));
 
+  // Global search: case-insensitive substring across id (as text) and full name.
   if (q.search) {
-    const pattern = `%${escapeLike(q.search.toLowerCase())}%`;
+    const pattern = `%${escapeLike(q.search)}%`;
     predicates.push(
       or(
+        sql`${personalInformation.id}::text ILIKE ${pattern}`,
         ilike(personalInformation.fullName, pattern),
-        ilike(personalInformation.phoneNumber, pattern),
-      ) as SQL,
+      )!,
     );
   }
 
-  const likeFilters: Array<[AnyPgColumn, string | undefined]> = [
-    [personalInformation.fullName, q.fullName],
-    [personalInformation.phoneNumber, q.phoneNumber],
-  ];
-  for (const [column, value] of likeFilters) {
-    if (value) predicates.push(ilike(column, `%${escapeLike(value.toLowerCase())}%`));
-  }
-
-  return predicates.length > 0 ? and(...predicates) : undefined;
+  return and(...predicates)!;
 };
 
 @Injectable()
@@ -103,36 +91,14 @@ export class PersonalInformationService {
   async list(
     userId: string,
     query: ListPersonalInformationQuery,
-  ): Promise<PaginatedResponseDto<PersonalInformation>> {
+  ): Promise<Paginated<PersonalInformation>> {
     await this.provisioning.ensureProvisioned({ id: userId });
-    const where = buildWhere(userId, query);
-    const orderBy =
-      query.sortDirection === 'asc'
-        ? asc(sortColumns[query.sortBy])
-        : desc(sortColumns[query.sortBy]);
-
-    const [rows, countRows] = await Promise.all([
-      this.db
-        .select()
-        .from(personalInformation)
-        .where(where)
-        .orderBy(orderBy)
-        .limit(query.size)
-        .offset(query.page * query.size),
-      this.db
-        .select({ total: sql`count(*)`.mapWith(Number) })
-        .from(personalInformation)
-        .where(where),
-    ]);
-
-    const total = countRows[0]?.total ?? 0;
-    return new PaginatedResponseDto(
-      rows,
-      total,
-      Math.ceil(total / query.size),
-      query.page,
-      query.size,
-    );
+    return listPaginated(this.db, {
+      table: personalInformation,
+      where: buildWhere(userId, query),
+      query,
+      sortColumns: personalInformationSortColumns,
+    });
   }
 
   async update(

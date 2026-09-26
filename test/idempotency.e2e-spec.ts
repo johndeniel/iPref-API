@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { eq, inArray } from 'drizzle-orm';
+import type { Server } from 'node:http';
 import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthService } from './../src/auth/auth.service.js';
@@ -10,7 +11,7 @@ import { DRIZZLE } from './../src/database/database.constants.js';
 import type { DrizzleDb } from './../src/database/drizzle.types.js';
 import { idempotencyKeys } from './../src/idempotency/model/idempotency-key.table.js';
 import { IdempotencyKeyRepository } from './../src/idempotency/repository/idempotency-key.repository.js';
-import { personalInformation } from './../src/personal-information/model/personal-information.table.js';
+import { personalInformation } from './../src/personal-information/model/personal-information.model.js';
 import { AppModule } from './../src/app.module.js';
 
 const key = (): string => uuidv4();
@@ -41,8 +42,7 @@ describe('Idempotency + personal-information (e2e)', () => {
   const usedUsers: string[] = [];
 
   const api = () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    return request(app.getHttpServer());
+    return request(app.getHttpServer() as Server);
   };
 
   const freshUser = (): string => {

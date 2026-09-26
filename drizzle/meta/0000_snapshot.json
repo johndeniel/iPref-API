@@ -111,6 +111,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "full_name": {
           "name": "full_name",
           "type": "varchar(255)",
@@ -151,41 +157,11 @@
         }
       },
       "indexes": {
-        "idx_pi_full_name": {
-          "name": "idx_pi_full_name",
+        "idx_pi_user_id": {
+          "name": "idx_pi_user_id",
           "columns": [
             {
-              "expression": "full_name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_pi_phone_number": {
-          "name": "idx_pi_phone_number",
-          "columns": [
-            {
-              "expression": "phone_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_pi_blob_id": {
-          "name": "idx_pi_blob_id",
-          "columns": [
-            {
-              "expression": "blob_id",
+              "expression": "user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -199,7 +175,13 @@
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "personal_information_user_id_unique": {
+          "name": "personal_information_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["user_id"]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
