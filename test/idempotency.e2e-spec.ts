@@ -57,7 +57,7 @@ describe('Idempotency + personal-information (e2e)', () => {
     })
       .overrideProvider(AuthService)
       .useValue({
-        // WebhookVerifierService reads options at construction (lazy JWKS, no network).
+        // AuthService reads options at construction (lazy JWKS, no network).
         options: { jwksUrl: 'https://localhost/.well-known/jwks.json' },
         verifyBearer: (token: string) => {
           if (!token.startsWith('e2e-')) return Promise.reject(new UnauthorizedException());

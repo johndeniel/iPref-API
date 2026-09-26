@@ -1,6 +1,6 @@
-// Single source of truth for the personal_information row: the Drizzle table
-// defines storage (lengths, nullability, defaults), drizzle-zod derives
-// validation from it, extras are refined here. The DB rejects what slips past.
+// One definition drives everything: the table sets the storage rules, the
+// request validation is generated from it, and the database rejects anything
+// that slips through.
 
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { index, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
@@ -8,9 +8,10 @@ import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { pageEnvelope } from '../../common/pagination.js';
 
-// Indexes: only user_id (ownership/provisioning lookups; also unique).
-// Deliberately NO btree on full_name/phone_number/blob_id — every filter on
-// them is a %term% ILIKE (btree can't serve leading wildcards) or unused.
+// Only user_id is indexed — it serves the ownership and provisioning lookups
+// (and is unique). No indexes on full_name/phone_number/blob_id: those are
+// only matched with `%term%` searches, and a btree index can't speed up a
+// term that starts with a wildcard.
 export const personalInformation = pgTable(
   'personal_information',
   {
@@ -30,22 +31,30 @@ export const personalInformation = pgTable(
   table => [index('idx_pi_user_id').on(table.userId)],
 );
 
-// Strict bodies (unknown fields → 400); query filters stay lenient.
-// userId is server-set from the verified JWT — never client-supplied.
-// Nullable columns are nullish so bodies match the table exactly.
+// Request bodies reject unknown fields (400); URL filters stay lenient.
+// userId always comes from the verified login token — clients can never set
+// it. Optional columns accept null or missing to match the table.
 export const createPersonalInformationSchema = createInsertSchema(personalInformation, {
   fullName: z.string().trim().min(1, 'Full name is required').max(255),
   blobUrl: z.url('Blob URL must be a valid URL').max(2048).nullish(),
   blobId: z.uuid().nullish(),
-  phoneNumber: z.string().trim().max(20).nullish(),
+  phoneNumber: z
+    .string()
+    .trim()
+    .max(20)
+    .regex(
+      /^(?:\+63[\s-]?|0)9(?:[\s-]?\d){9}$/,
+      'Philippine mobile number: 09XXXXXXXXX or +639XXXXXXXXX (spaces/dashes allowed)',
+    )
+    .nullish(),
 })
   .omit({ id: true, userId: true, createdAt: true, updatedAt: true })
   .strict();
 
 export const updatePersonalInformationSchema = createPersonalInformationSchema.partial().strict();
 
-// Sort whitelist: this one map is both the `sortBy` enum and the ORDER BY
-// column lookup, so user input can never reach a column that isn't listed.
+// Allowed sort fields: this map is both the `sortBy` options and the column
+// lookup, so a request can never sort by an unlisted column.
 export const personalInformationSortColumns = {
   fullName: personalInformation.fullName,
   createdAt: personalInformation.createdAt,
@@ -59,9 +68,8 @@ const SORT_FIELDS = Object.keys(personalInformationSortColumns) as [
   ...PersonalInformationSortField[],
 ];
 
-// Query contract: key order below IS the Swagger UI parameter order
-// (consumed by ApiZodQuery). `search` = multi-column text search;
-// `fullName` = dedicated per-field contains filter.
+// URL filter contract: the field order below sets the parameter order in
+// Swagger UI. `search` looks across columns; `fullName` filters that one field.
 export const listPersonalInformationQuerySchema = z.object({
   search: z
     .string()

@@ -9,10 +9,9 @@ import { AppModule } from './../src/app.module.js';
 
 /**
  * Managed Neon Auth boundaries with the real module wired in:
- * open routes stay open, guarded routes 401 without a parsable token, and
- * the webhook rejects unsigned payloads. Tokens that fail local parsing
- * never reach the JWKS endpoint, so this suite needs no network beyond the
- * database (mirrors the idempotency e2e).
+ * open routes stay open, guarded routes 401 without a parsable token.
+ * Tokens that fail local parsing never reach the JWKS endpoint, so this
+ * suite needs no network beyond the database (mirrors the idempotency e2e).
  */
 describe('Auth boundaries (e2e)', () => {
   let app: INestApplication;
@@ -27,7 +26,7 @@ describe('Auth boundaries (e2e)', () => {
     }).compile();
 
     // Mirror main.ts — the Test bootstrapper does not run it.
-    app = moduleFixture.createNestApplication({ rawBody: true });
+    app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
     );
@@ -60,23 +59,5 @@ describe('Auth boundaries (e2e)', () => {
       .expect(res => {
         expect(res.body).toMatchObject({ statusCode: 401, message: 'Invalid or expired token' });
       });
-  }, 90_000);
-
-  it('rejects webhook calls without headers with 400', async () => {
-    await api().post('/webhooks/neon-auth').send({}).expect(400);
-  }, 90_000);
-
-  it('rejects webhook calls with an invalid signature with 401', async () => {
-    // Malformed detached JWS fails before any JWKS lookup (also proves the
-    // raw body survived parsing — otherwise this would be a 400).
-    await api()
-      .post('/webhooks/neon-auth')
-      .set('X-Neon-Signature', 'header.payload.signature')
-      .set('X-Neon-Signature-Kid', 'kid')
-      .set('X-Neon-Timestamp', String(Date.now()))
-      .set('X-Neon-Event-Type', 'user.created')
-      .set('X-Neon-Event-Id', uuidv4())
-      .send({ user: { id: 'user-1' } })
-      .expect(401);
   }, 90_000);
 });

@@ -45,15 +45,15 @@ npm run dev
 
 ```
 src/
-  main.ts                     # bootstrap: rawBody, CORS, ValidationPipe, Swagger
+  main.ts                     # bootstrap: CORS, ValidationPipe, Swagger
   app.module.ts               # middleware order: logging, then idempotency
-  auth/                       # Neon Auth JWT verification, guard, webhook signatures
+  auth/                       # Neon Auth JWT verification, guard
   common/                     # logging, Zod pipe, paginated DTO, http helpers
   config/                     # Joi env schema
   database/                   # pg pool, Drizzle, IPv4-first egress, /health/db
   health/                     # GET /health
   idempotency/                # Idempotency-Key middleware + key store
-  personal-information/       # profile CRUD, provisioning, Neon Auth webhook
+  personal-information/       # profile CRUD, first-touch provisioning
 test/                         # e2e
 docs/                         # auth + module docs
 ```

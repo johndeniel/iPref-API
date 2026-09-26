@@ -1,4 +1,3 @@
-import { BadRequestException } from '@nestjs/common';
 import type { DatabaseService } from '../../database/database.service.js';
 import type { DrizzleDb } from '../../database/drizzle.types.js';
 import { ProfileProvisioningService } from './profile-provisioning.service.js';
@@ -19,57 +18,6 @@ const selectMock = (rows: unknown[]) => {
 
 describe('ProfileProvisioningService', () => {
   beforeEach(() => vi.clearAllMocks());
-
-  describe('provisionFromWebhook', () => {
-    it('inserts name/image from the webhook payload, idempotently', async () => {
-      const { insert, values, onConflictDoNothing } = insertMock();
-      const service = new ProfileProvisioningService(
-        { insert } as unknown as DrizzleDb,
-        { query: vi.fn() } as unknown as DatabaseService,
-      );
-
-      await service.provisionFromWebhook({
-        id: 'user-1',
-        name: 'Ada Lovelace',
-        email: 'ada@example.com',
-        image: 'https://cdn.example/ada.png',
-      });
-
-      expect(values).toHaveBeenCalledWith({
-        userId: 'user-1',
-        fullName: 'Ada Lovelace',
-        blobUrl: 'https://cdn.example/ada.png',
-      });
-      expect(onConflictDoNothing).toHaveBeenCalledOnce();
-    });
-
-    it('falls back to email when name is missing and to null blobUrl', async () => {
-      const { insert, values } = insertMock();
-      const service = new ProfileProvisioningService(
-        { insert } as unknown as DrizzleDb,
-        { query: vi.fn() } as unknown as DatabaseService,
-      );
-
-      await service.provisionFromWebhook({ id: 'user-1', email: 'ada@example.com' });
-
-      expect(values).toHaveBeenCalledWith({
-        userId: 'user-1',
-        fullName: 'ada@example.com',
-        blobUrl: null,
-      });
-    });
-
-    it('rejects payloads with neither name nor email', async () => {
-      const service = new ProfileProvisioningService(
-        { insert: vi.fn() } as unknown as DrizzleDb,
-        { query: vi.fn() } as unknown as DatabaseService,
-      );
-
-      await expect(service.provisionFromWebhook({ id: 'user-1' })).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-  });
 
   describe('ensureProvisioned', () => {
     it('does nothing when the profile already exists', async () => {

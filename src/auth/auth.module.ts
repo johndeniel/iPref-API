@@ -1,7 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtAuthGuard } from './auth.guard.js';
 import { AuthService } from './auth.service.js';
-import { WebhookVerifierService } from './webhooks/webhook-verifier.service.js';
 
 /**
  * Managed Neon Auth: verifies Bearer JWTs against the instance JWKS.
@@ -10,7 +9,7 @@ import { WebhookVerifierService } from './webhooks/webhook-verifier.service.js';
  */
 @Global()
 @Module({
-  providers: [AuthService, JwtAuthGuard, WebhookVerifierService],
-  exports: [AuthService, JwtAuthGuard, WebhookVerifierService],
+  providers: [AuthService, JwtAuthGuard],
+  exports: [AuthService, JwtAuthGuard],
 })
 export class AuthModule {}

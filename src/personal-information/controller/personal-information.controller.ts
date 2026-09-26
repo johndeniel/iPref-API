@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiHeader,
   ApiOkResponse,
   ApiOperation,
@@ -67,6 +68,21 @@ export class PersonalInformationController {
       'Unique key for idempotent request (UUID v4). Replays the first completed response for this key, regardless of retry body.',
     required: true,
   })
+  @ApiBody({
+    description: 'Profile fields to store.',
+    schema: toOpenApiSchema(createPersonalInformationSchema, 'input'),
+    examples: {
+      profile: {
+        summary: 'Complete profile',
+        value: {
+          fullName: 'Ada Lovelace',
+          blobUrl: 'https://cdn.example.com/avatars/ada.png',
+          blobId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+          phoneNumber: '+639171234567',
+        },
+      },
+    },
+  })
   @ApiResponse({ status: 201, description: 'Personal information created' })
   @ApiResponse({
     status: 400,
@@ -110,6 +126,21 @@ export class PersonalInformationController {
 
   @Put(':id')
   @ApiOperation({ summary: 'Update personal information' })
+  @ApiBody({
+    description: 'Fields to change (partial update; omit what stays).',
+    schema: toOpenApiSchema(updatePersonalInformationSchema, 'input'),
+    examples: {
+      profile: {
+        summary: 'Complete update',
+        value: {
+          fullName: 'Ada Lovelace',
+          blobUrl: 'https://cdn.example.com/avatars/ada.png',
+          blobId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+          phoneNumber: '+639171234567',
+        },
+      },
+    },
+  })
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,

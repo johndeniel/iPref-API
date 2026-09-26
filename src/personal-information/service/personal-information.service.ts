@@ -29,7 +29,7 @@ const buildWhere = (userId: string, q: ListPersonalInformationQuery): SQL => {
   if (q.id) predicates.push(eq(personalInformation.id, q.id));
   if (q.fullName) predicates.push(containsFilter(personalInformation.fullName, q.fullName));
 
-  // Global search: case-insensitive substring across id (as text) and full name.
+  // Text search: case-insensitive match across id (as text) and full name.
   if (q.search) {
     const pattern = `%${escapeLike(q.search)}%`;
     predicates.push(
@@ -51,10 +51,10 @@ export class PersonalInformationService {
   ) {}
 
   /**
-   * Manual creation path (local dev, re-creation after delete). Rows are
-   * normally auto-provisioned on signup (webhook) or first read (lazy), so
-   * this 409s when one exists. No lazy ensure here: a 400 on the first
-   * attempt must stay retryable with the same idempotency key.
+   * Manual creation (local dev, or re-creating after a delete). Rows are
+   * normally auto-created at signup or on first read, so this returns 409
+   * when one exists. No auto-create here: a failed first attempt must stay
+   * retryable under the same idempotency key.
    */
   async create(userId: string, dto: CreatePersonalInformationInput): Promise<PersonalInformation> {
     const existing = await this.findOwned(userId, undefined);
@@ -78,8 +78,8 @@ export class PersonalInformationService {
   }
 
   /**
-   * Post-login "who am I": returns the caller's profile, provisioning it on
-   * first touch. Never 404s under normal operation.
+   * Post-login "who am I": returns the caller's profile, creating it on the
+   * first call. No 404 in normal use.
    */
   async getMine(userId: string): Promise<PersonalInformation> {
     await this.provisioning.ensureProvisioned({ id: userId });

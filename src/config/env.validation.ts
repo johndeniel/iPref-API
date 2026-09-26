@@ -16,4 +16,6 @@ export const envValidationSchema = Joi.object({
   NEON_AUTH_ISSUER: Joi.string()
     .uri({ scheme: ['https'] })
     .optional(),
+  // Comma-separated CORS allow-list (default: local demo client).
+  CORS_ORIGIN: Joi.string().optional(),
 }).unknown(true);

@@ -5,13 +5,15 @@ import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
-  // rawBody serves the Neon Auth webhook (signature binds exact bytes);
-  // parsed @Body() behavior is unchanged for all other routes.
-  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
   app.enableShutdownHooks();
-  // Scoped to the demo web client; tighten via env when a prod origin exists.
-  app.enableCors({ origin: 'http://localhost:8000' });
+  // Comma-separated allow-list; default serves the local demo client.
+  const origins = (process.env.CORS_ORIGIN ?? 'http://localhost:8000')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+  app.enableCors({ origin: origins });
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );

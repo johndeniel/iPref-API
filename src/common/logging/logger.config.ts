@@ -29,6 +29,10 @@ const lineFormat = winston.format.printf(info => {
   );
 });
 
+// File logging is always on. Vercel's filesystem is read-only outside /tmp,
+// so logs land in /tmp/logs there and in ./logs everywhere else.
+const logDir = process.env.VERCEL ? '/tmp/logs' : 'logs';
+
 export const loggerConfig: WinstonModuleOptions = {
   level: 'info',
   format: winston.format.combine(
@@ -38,7 +42,7 @@ export const loggerConfig: WinstonModuleOptions = {
   transports: [
     new winston.transports.Console(),
     new winston.transports.DailyRotateFile({
-      filename: 'logs/ipref-api-%DATE%.log',
+      filename: `${logDir}/ipref-api-%DATE%.log`,
       datePattern: 'YYYY-MM-DD',
       maxFiles: '30d',
       maxSize: '1g',

@@ -16,9 +16,9 @@ How it fits together:
 - Neon Auth owns identity (`neon_auth.user`, `.session`, …) in the **same
   database** this API connects to. Google's `name` maps 1:1 onto `fullName` —
   no first/last splitting.
-- A `user.created` **webhook** auto-creates the `personal_information` row on
-  signup (replaces self-hosted `databaseHooks`); every endpoint also lazily
-  ensures the row as a self-healing fallback.
+- The `personal_information` row is created on the user's **first
+  authenticated touch** (any endpoint checks for it, reads `neon_auth.user`,
+  inserts if missing) — no webhook, no console config.
 - Mobile authenticates against the Neon Auth URL, then calls this API with
   the JWT (`Authorization: Bearer`); Google login goes through the
   **native Google SDK → ID token** flow (same code path on Android and iOS,
@@ -43,8 +43,8 @@ JWKS. One dependency, no auth server code:
 npm install jose
 ```
 
-`jose` verifies Bearer JWTs (`src/auth/`) and the webhook's detached-JWS
-signatures. No `better-auth` server packages, no `@thallesp/nestjs-better-auth`.
+`jose` verifies Bearer JWTs (`src/auth/`). No `better-auth` server packages,
+no `@thallesp/nestjs-better-auth`.
 
 ### A2. Environment
 
@@ -84,38 +84,25 @@ npm run db:migrate
 `userId` is server-set from the JWT and omitted from the zod schemas, so
 clients cannot spoof it (strict bodies 400 it).
 
-### A5. Provisioning — webhook (eager) + lazy (fallback)
+### A5. Provisioning — first-touch creation
 
-- `POST /webhooks/neon-auth` verifies the EdDSA detached-JWS signature
-  (`X-Neon-Signature*` headers, 5-min timestamp tolerance) and inserts the
-  profile from the `user.created` payload (`name ?? email`, `image →
-blobUrl`), idempotently (`ON CONFLICT DO NOTHING` doubles as redelivery
-  dedup). Other event types return 200 ignored. Responses stay 2xx/4xx —
-  Neon treats other 4xx as non-retryable.
-- `ProfileProvisioningService.ensureProvisioned()` runs on every
-  personal-information operation: if the row is missing it reads
-  `neon_auth.user` (same database — no extra HTTP call) and inserts.
-- `main.ts` uses `rawBody: true` so the webhook can verify exact bytes;
-  parsed `@Body()` behavior is unchanged everywhere else.
-
-Subscribe in the Neon Console (Auth → Configuration → Webhooks) or API/CLI:
-
-```bash
-neon neon-auth config webhook update --enabled \
-  --url https://<your-api>/webhooks/neon-auth \
-  --enabled-events user.created --timeout 5
-```
-
-Localhost is rejected by Neon — use ngrok for local webhook testing; the
-lazy path covers local dev with zero console config.
+- `ProfileProvisioningService.ensureProvisioned()` runs before every
+  personal-information operation: if the caller's row is missing it reads
+  `neon_auth.user` (same database — no extra HTTP call) and inserts it,
+  falling back to the JWT email or the account id when that lookup fails.
+- The insert uses `ON CONFLICT DO NOTHING` on `user_id`, so simultaneous
+  first requests can't create duplicates.
+- No webhook: signup alone changes nothing in this API; the row appears on
+  first touch. Zero console config, works locally with no public URL.
 
 Two consequences handled:
 
 1. **Idempotency keys are global, not per-user.** Only 2xx responses are
    cached (401s release the key — verified in
    `idempotency.middleware.ts`), so auth failures never poison replays.
-2. **POST create 409s when your row exists** (webhook/lazy normally beat
-   you to it); a 400 on the first attempt stays retryable with the same key.
+2. **POST create 409s when your row exists** (the first touch normally
+   created it already); a 400 on the first attempt stays retryable with the
+   same key.
 
 ## Part B — Neon Console (one project, three clients)
 
@@ -243,8 +230,8 @@ await authClient.signIn.social({ provider: 'google', callbackURL: '/dashboard' }
 
 - [ ] `npm run test`, `lint`, `format:check`, `build` green.
 - [ ] `db:generate` clean; `personal_information` has `user_id` (unique + index).
-- [ ] Email sign-up → `user.created` webhook fires → `personal_information`
-      row auto-created (`fullName` = name); lazy path covers missed webhooks.
+- [ ] Email sign-up → first API call (`GET /me`) → `personal_information`
+      row auto-created (`fullName` = name).
 - [ ] Google login on Android APK **and** iOS build → same result.
 - [ ] Bearer CRUD: 200 with token, 401 without; cross-user IDs 404;
       idempotency replay + strict-body 400s unchanged.
@@ -256,10 +243,8 @@ await authClient.signIn.social({ provider: 'google', callbackURL: '/dashboard' }
 | Symptom                                            | Likely cause                                                              |
 | -------------------------------------------------- | ------------------------------------------------------------------------- |
 | `redirect_uri_mismatch`                            | Callback ≠ `<NEON_AUTH_URL>/callback/google`                              |
-| Webhook never fires locally                        | Neon rejects localhost — expose via ngrok/HTTPS hostname                  |
-| Webhook 401s                                       | Clock skew > tolerance, or body re-serialized before verify (needs raw)   |
 | 401 with a fresh token                             | Issuer ≠ auth URL origin, or JWKS URL misconfigured                       |
-| POST returns 409 after signup                      | By design — webhook/lazy already created your row; use PUT                |
+| POST returns 409 after signup                      | By design — the first touch already created your row; use PUT             |
 | Google login works Android, fails iOS (or reverse) | Wrong Bundle ID / SHA-1 on that platform's OAuth client                   |
 | Session lost on app restart                        | SecureStore write missing (bare RN: use keychain/keystore-backed storage) |
 | Concurrent same-key POSTs 409                      | By design — rival owns the key; retry with same key                       |
